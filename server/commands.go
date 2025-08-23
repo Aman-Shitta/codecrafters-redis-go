@@ -900,23 +900,26 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 	if len(args) == 0 {
 		return "", fmt.Errorf("ERR not yet supported")
 	}
-	if len(args) != 2 {
+	if len(args) < 2 {
 		return "", fmt.Errorf("ERR wrong usage, help: RPUSH <key> <item>")
 	}
 	listKey := args[0]
-	listVal := args[1]
+	listVals := args[1:]
 
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
-			updatedList := append(SessionStore.Data[listKey].Data.([]string), listVal)
-			delete(SessionStore.Data, listKey)
-			SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
+			// updatedList := []string{}
+			for _, listVal := range listVals {
+				updatedList := append(SessionStore.Data[listKey].Data.([]string), listVal)
+				delete(SessionStore.Data, listKey)
+				SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
+			}
 
 		} else {
 			return "", fmt.Errorf("ERR %s is not a list", listKey)
 		}
 	} else {
-		SessionStore.Data[listKey] = Item{Type: "list", Data: []string{listVal}}
+		SessionStore.Data[listKey] = Item{Type: "list", Data: listVals}
 	}
 
 	totalItems := len(SessionStore.Data[listKey].Data.([]string))
