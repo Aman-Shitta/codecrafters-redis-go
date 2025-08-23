@@ -52,6 +52,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return multiHandlerWrapper{r.multi}, nil
 	case "rpush":
 		return argHandlerWrapper{r.rpush}, nil
+	case "lrange":
+		return argHandlerWrapper{r.lrange}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -924,5 +926,44 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 
 	totalItems := len(SessionStore.Data[listKey].Data.([]string))
 	return utils.ToInteger(totalItems), nil
+}
 
+func (r *RedisServer) lrange(args []string) (string, error) {
+
+	if len(args) != 3 {
+		return "", fmt.Errorf("ERR not yet supported")
+	}
+	listKey := args[0]
+	item, ok := SessionStore.Data[listKey]
+	data := []string{}
+
+	if ok && item.Type != "list" {
+		return utils.ToArrayBulkString(data...), nil
+	} else if !ok {
+		return utils.ToArrayBulkString(data...), nil
+	}
+
+	start, err := strconv.Atoi(args[1])
+	if err != nil {
+		return "", nil
+	}
+	end, err := strconv.Atoi(args[2])
+	end++
+
+	if start > len(item.Data.([]string)) {
+		return utils.ToArrayBulkString(data...), nil
+	}
+
+	if start > end {
+		return utils.ToArrayBulkString(data...), nil
+	}
+
+	if len(item.Data.([]string)) < end {
+		end = len(item.Data.([]string))
+	}
+	if err != nil {
+		return "", nil
+	}
+
+	return utils.ToArrayBulkString(item.Data.([]string)[start:end]...), nil
 }
