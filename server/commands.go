@@ -59,6 +59,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.lrange}, nil
 	case "llen":
 		return argHandlerWrapper{r.llen}, nil
+	case "lpop":
+		return argHandlerWrapper{r.lpop}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -1033,4 +1035,28 @@ func (r *RedisServer) llen(args []string) (string, error) {
 	} else {
 		return utils.ToInteger(0), nil
 	}
+}
+
+func (r *RedisServer) lpop(args []string) (string, error) {
+
+	if len(args) != 1 {
+		return "", fmt.Errorf("ERR items not proper in args")
+	}
+
+	lkey := args[0]
+
+	if item, ok := SessionStore.Data[lkey]; ok && item.Type != "list" {
+		return "", fmt.Errorf("ERR Item not exists")
+	} else if item.Type != "list" {
+		return "", fmt.Errorf("ERR Item not a list")
+	}
+
+	dataItems := SessionStore.Data[lkey].Data.([]string)
+	firstDataItem := dataItems[0]
+
+	delete(SessionStore.Data, lkey)
+
+	SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[1:]}
+
+	return utils.ToBulkString(firstDataItem), nil
 }
