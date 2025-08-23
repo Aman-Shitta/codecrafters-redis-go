@@ -913,12 +913,12 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
-			// updatedList := []string{}
+			updatedList := SessionStore.Data[listKey].Data.([]string)
 			for _, listVal := range listVals {
-				updatedList := append(SessionStore.Data[listKey].Data.([]string), listVal)
-				delete(SessionStore.Data, listKey)
-				SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
+				updatedList = append(updatedList, listVal)
 			}
+			delete(SessionStore.Data, listKey)
+			SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
 
 		} else {
 			return "", fmt.Errorf("ERR %s is not a list", listKey)
@@ -941,21 +941,20 @@ func (r *RedisServer) lpush(args []string) (string, error) {
 	listKey := args[0]
 	listVals := args[1:]
 
-	slices.Reverse(listVals)
-
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
-			// updatedList := []string{}
+			updatedList := SessionStore.Data[listKey].Data.([]string)
 			for _, listVal := range listVals {
-				updatedList := append(SessionStore.Data[listKey].Data.([]string), listVal)
-				delete(SessionStore.Data, listKey)
-				SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
+				updatedList = slices.Insert(updatedList, 0, listVal)
 			}
+			delete(SessionStore.Data, listKey)
+			SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
 
 		} else {
 			return "", fmt.Errorf("ERR %s is not a list", listKey)
 		}
 	} else {
+		slices.Reverse(listVals)
 		SessionStore.Data[listKey] = Item{Type: "list", Data: listVals}
 	}
 
