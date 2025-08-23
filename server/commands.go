@@ -943,22 +943,28 @@ func (r *RedisServer) lrange(args []string) (string, error) {
 		return utils.ToArrayBulkString(data...), nil
 	}
 
+	dataLen := len(item.Data.([]string))
+
 	start, err := strconv.Atoi(args[1])
 	if err != nil {
 		return "", nil
 	}
-	end, err := strconv.Atoi(args[2])
-	end++
 
-	dataLen := len(item.Data.([]string))
 	if start < 0 {
 		start = dataLen + start
+		start = max(0, start)
+	}
+
+	end, err := strconv.Atoi(args[2])
+	if err != nil {
+		return "", nil
 	}
 
 	if end < 0 {
 		end = dataLen + end
 	}
-
+	end++
+	fmt.Println(start, end)
 	if start > dataLen {
 		return utils.ToArrayBulkString(data...), nil
 	}
