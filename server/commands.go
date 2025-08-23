@@ -57,6 +57,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.lpush}, nil
 	case "lrange":
 		return argHandlerWrapper{r.lrange}, nil
+	case "llen":
+		return argHandlerWrapper{r.llen}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -914,9 +916,7 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
 			updatedList := SessionStore.Data[listKey].Data.([]string)
-			for _, listVal := range listVals {
-				updatedList = append(updatedList, listVal)
-			}
+			updatedList = append(updatedList, listVals...)
 			delete(SessionStore.Data, listKey)
 			SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
 
@@ -1015,4 +1015,22 @@ func (r *RedisServer) lrange(args []string) (string, error) {
 	}
 
 	return utils.ToArrayBulkString(item.Data.([]string)[start:end]...), nil
+}
+
+func (r *RedisServer) llen(args []string) (string, error) {
+
+	if len(args) != 1 {
+		return "", fmt.Errorf("ERR items not proper in args")
+	}
+
+	lkey := args[0]
+
+	if dataItem, ok := SessionStore.Data[lkey]; ok {
+		if dataItem.Type != "list" {
+			return "", fmt.Errorf("ERR item not a list")
+		}
+		return utils.ToInteger(len(dataItem.Data.([]string))), nil
+	} else {
+		return utils.ToInteger(0), nil
+	}
 }
