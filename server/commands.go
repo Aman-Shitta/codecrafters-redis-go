@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -52,6 +53,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return multiHandlerWrapper{r.multi}, nil
 	case "rpush":
 		return argHandlerWrapper{r.rpush}, nil
+	case "lpush":
+		return argHandlerWrapper{r.lpush}, nil
 	case "lrange":
 		return argHandlerWrapper{r.lrange}, nil
 	default:
@@ -907,6 +910,38 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 	}
 	listKey := args[0]
 	listVals := args[1:]
+
+	if _, ok := SessionStore.Data[listKey]; ok {
+		if SessionStore.Data[listKey].Type == "list" {
+			// updatedList := []string{}
+			for _, listVal := range listVals {
+				updatedList := append(SessionStore.Data[listKey].Data.([]string), listVal)
+				delete(SessionStore.Data, listKey)
+				SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
+			}
+
+		} else {
+			return "", fmt.Errorf("ERR %s is not a list", listKey)
+		}
+	} else {
+		SessionStore.Data[listKey] = Item{Type: "list", Data: listVals}
+	}
+
+	totalItems := len(SessionStore.Data[listKey].Data.([]string))
+	return utils.ToInteger(totalItems), nil
+}
+
+func (r *RedisServer) lpush(args []string) (string, error) {
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR not yet supported")
+	}
+	if len(args) < 2 {
+		return "", fmt.Errorf("ERR wrong usage, help: RPUSH <key> <item>")
+	}
+	listKey := args[0]
+	listVals := args[1:]
+
+	slices.Reverse(listVals)
 
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
