@@ -50,6 +50,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.incr}, nil
 	case "multi":
 		return multiHandlerWrapper{r.multi}, nil
+	case "rpush":
+		return argHandlerWrapper{r.rpush}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -892,4 +894,32 @@ func (r *RedisServer) keys(args []string) (string, error) {
 	}
 
 	return resp, nil
+}
+
+func (r *RedisServer) rpush(args []string) (string, error) {
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR not yet supported")
+	}
+	if len(args) != 2 {
+		return "", fmt.Errorf("ERR wrong usage, help: RPUSH <key> <item>")
+	}
+	listKey := args[0]
+	listVal := args[1]
+
+	if _, ok := SessionStore.Data[listKey]; ok {
+		if SessionStore.Data[listKey].Type == "list" {
+			updatedList := append(SessionStore.Data[listKey].Data.([]string), listVal)
+			delete(SessionStore.Data, listKey)
+			SessionStore.Data[listKey] = Item{Type: "list", Data: updatedList}
+
+		} else {
+			return "", fmt.Errorf("ERR %s is not a list", listKey)
+		}
+	} else {
+		SessionStore.Data[listKey] = Item{Type: "list", Data: []string{listVal}}
+	}
+
+	totalItems := len(SessionStore.Data[listKey].Data.([]string))
+	return utils.ToInteger(totalItems), nil
+
 }
