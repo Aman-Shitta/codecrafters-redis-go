@@ -41,6 +41,7 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.wait}, nil
 	case "type":
 		return argHandlerWrapper{r.vtype}, nil
+	// stream commands
 	case "xadd":
 		return argHandlerWrapper{r.xadd}, nil
 	case "xrange":
@@ -51,6 +52,7 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.incr}, nil
 	case "multi":
 		return multiHandlerWrapper{r.multi}, nil
+	// list commands
 	case "rpush":
 		return argHandlerWrapper{r.rpush}, nil
 	case "lpush":
@@ -365,7 +367,7 @@ func (r *RedisServer) xread(args []string) (string, error) {
 		fmt.Println("resp :: ", strings.ReplaceAll(resp, "\r\n", "\\r\\n"))
 	} else {
 		// sendf null reponse back
-		resp = "$-1\r\n"
+		resp = "*-1\r\n"
 	}
 
 	return resp, nil
@@ -1012,9 +1014,6 @@ func (r *RedisServer) lrange(args []string) (string, error) {
 	if dataLen < end {
 		end = dataLen
 	}
-	if err != nil {
-		return "", nil
-	}
 
 	return utils.ToArrayBulkString(item.Data.([]string)[start:end]...), nil
 }
@@ -1039,11 +1038,27 @@ func (r *RedisServer) llen(args []string) (string, error) {
 
 func (r *RedisServer) lpop(args []string) (string, error) {
 
-	if len(args) != 1 {
+	if len(args) == 0 {
 		return "", fmt.Errorf("ERR items not proper in args")
 	}
 
+	fmt.Printf("lpop args: %s ", args)
 	lkey := args[0]
+
+	var optional_len string
+	var err error
+	remove_len := 1
+
+	if len(args) > 1 {
+		optional_len = args[1]
+	}
+
+	if optional_len != "" {
+		remove_len, err = strconv.Atoi(optional_len)
+		if err != nil {
+			return "", err
+		}
+	}
 
 	if item, ok := SessionStore.Data[lkey]; ok && item.Type != "list" {
 		return "", fmt.Errorf("ERR Item not exists")
@@ -1052,11 +1067,16 @@ func (r *RedisServer) lpop(args []string) (string, error) {
 	}
 
 	dataItems := SessionStore.Data[lkey].Data.([]string)
-	firstDataItem := dataItems[0]
+	nDataItems := dataItems[0:remove_len]
 
 	delete(SessionStore.Data, lkey)
 
-	SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[1:]}
+	SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
 
-	return utils.ToBulkString(firstDataItem), nil
+	if remove_len == 1 {
+		return utils.ToBulkString(nDataItems[0]), nil
+	} else {
+		return utils.ToArrayBulkString(nDataItems...), nil
+	}
+
 }
