@@ -97,6 +97,7 @@ func ParseResp(d []byte) (string, []string, error) {
 var Types = map[string]string{
 	"OK":  "+",
 	"ERR": "-",
+	"ARR": "*",
 }
 
 // generate redis RESP supported simple string where
@@ -136,4 +137,22 @@ func ToArrayBulkString(data ...string) string {
 
 func ToInteger(i int) string {
 	return fmt.Sprintf("%c%d\r\n", Integer, i)
+}
+
+func ToArray(data ...string) string {
+
+	var resp strings.Builder
+
+	numOfIems := len(data)
+
+	if numOfIems == 0 {
+		numOfIems = -1
+	}
+	resp.WriteString(fmt.Sprintf("*%d\r\n", numOfIems))
+	for _, element := range data {
+		loe := len(element)
+		resp.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", loe, element))
+	}
+
+	return resp.String()
 }

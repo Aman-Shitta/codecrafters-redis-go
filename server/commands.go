@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/codecrafters-io/redis-starter-go/replication"
@@ -63,6 +65,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.llen}, nil
 	case "lpop":
 		return argHandlerWrapper{r.lpop}, nil
+	case "blpop":
+		return argHandlerWrapper{r.blpop}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -791,7 +795,7 @@ func (r *RedisServer) echo(args []string) (string, error) {
 	}
 
 	response := strings.Join(args, " ")
-	resp := utils.ToSimpleString(response, "OK")
+	resp := utils.ToBulkString(response)
 	return resp, nil
 }
 
@@ -839,12 +843,12 @@ func (r *RedisServer) set(args []string) (string, error) {
 	}
 
 	if r.Role == "master" {
-		return utils.ToSimpleString("OK", "OK"), nil
 
 		fmt.Println("Command added to buffer :: ", "SET", args)
 		// Add command to replication buffer
 		replication.AddCommandToBuffer("SET", args)
 		r.PendingWrites++
+		return utils.ToSimpleString("OK", "OK"), nil
 
 	}
 
@@ -1060,6 +1064,9 @@ func (r *RedisServer) lpop(args []string) (string, error) {
 		}
 	}
 
+	var mu sync.Mutex
+	mu.Lock()
+
 	if item, ok := SessionStore.Data[lkey]; ok && item.Type != "list" {
 		return "", fmt.Errorf("ERR Item not exists")
 	} else if item.Type != "list" {
@@ -1072,11 +1079,99 @@ func (r *RedisServer) lpop(args []string) (string, error) {
 	delete(SessionStore.Data, lkey)
 
 	SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
-
+	mu.Unlock()
 	if remove_len == 1 {
 		return utils.ToBulkString(nDataItems[0]), nil
 	} else {
 		return utils.ToArrayBulkString(nDataItems...), nil
 	}
+
+}
+
+func (r *RedisServer) blpop(args []string) (string, error) {
+
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR items not proper in args\n")
+	}
+
+	fmt.Printf("blpop args: %s \n", args)
+	lkey := args[0]
+
+	var timeoutStr string
+	var timeout int
+	var err error
+	remove_len := 1
+
+	if len(args) > 1 {
+		timeoutStr = args[1]
+	}
+
+	if timeoutStr != "" {
+		timeout, err = strconv.Atoi(timeoutStr)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if timeout == 0 {
+		timeout = 999999
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+
+	defer cancel()
+
+	fmt.Printf("=======%v\n", SessionStore)
+
+	checkVal := func(lkey string) (Item, error) {
+
+		item, ok := SessionStore.Data[lkey]
+		if ok && item.Type != "list" {
+			return Item{}, fmt.Errorf("ERR Item not exists")
+		} else if item.Type != "list" {
+			return Item{}, fmt.Errorf("ERR Item not a list")
+		}
+
+		return item, nil
+	}
+
+	var item Item
+	var mu sync.Mutex
+outer:
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("well it ended")
+			break outer
+		default:
+
+			mu.Lock()
+			item, _ = checkVal(lkey)
+			mu.Unlock()
+			if item != (Item{}) {
+				break outer
+			}
+		}
+	}
+
+	if ctx.Err() != nil {
+		fmt.Printf("context err :: %v", ctx.Err())
+		return utils.ToSimpleString("-1", "ARR"), nil
+		// return "$-1\r\n", nil
+	}
+
+	dataItems := item.Data.([]string)
+	fmt.Printf("[+] DEBUG: %v [+]\n", dataItems)
+	mu.Lock()
+	nDataItems := dataItems[0:slices.Max([]int{remove_len, len(dataItems)})]
+
+	if len(dataItems) == 1 {
+		delete(SessionStore.Data, lkey)
+	} else {
+		SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
+	}
+	mu.Unlock()
+	fmt.Printf("Here\n")
+
+	return utils.ToArray([]string{lkey, nDataItems[0]}...), nil
 
 }
