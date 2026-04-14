@@ -1098,7 +1098,7 @@ func (r *RedisServer) blpop(args []string) (string, error) {
 	lkey := args[0]
 
 	var timeoutStr string
-	var timeout int
+	var timeout float64
 	var err error
 	remove_len := 1
 
@@ -1107,7 +1107,7 @@ func (r *RedisServer) blpop(args []string) (string, error) {
 	}
 
 	if timeoutStr != "" {
-		timeout, err = strconv.Atoi(timeoutStr)
+		timeout, err = strconv.ParseFloat(timeoutStr, 64)
 		if err != nil {
 			return "", err
 		}
