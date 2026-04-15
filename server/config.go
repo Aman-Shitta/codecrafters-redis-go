@@ -56,6 +56,27 @@ var SessionStore = &Store{
 	Data: make(map[string]Item),
 }
 
+var mu sync.Mutex
+
+func Get(key string) (Item, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+	item, ok := SessionStore.Data[key]
+	return item, ok
+}
+
+func Set(key string, val Item) {
+	mu.Lock()
+	SessionStore.Data[key] = val
+	mu.Unlock()
+}
+
+func RemoveKey(key string) {
+	mu.Lock()
+	delete(SessionStore.Data, key)
+	mu.Unlock()
+}
+
 // Loads the data from givenn RDB file
 // adding persistence
 func (c *Config) AutoLoad() error {

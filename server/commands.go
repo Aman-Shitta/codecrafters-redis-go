@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/codecrafters-io/redis-starter-go/replication"
@@ -1064,22 +1063,20 @@ func (r *RedisServer) lpop(args []string) (string, error) {
 		}
 	}
 
-	var mu sync.Mutex
-	mu.Lock()
+	item, ok := Get(lkey)
 
-	if item, ok := SessionStore.Data[lkey]; ok && item.Type != "list" {
+	if ok && item.Type != "list" {
 		return "", fmt.Errorf("ERR Item not exists")
 	} else if item.Type != "list" {
 		return "", fmt.Errorf("ERR Item not a list")
 	}
 
-	dataItems := SessionStore.Data[lkey].Data.([]string)
+	dataItems := item.Data.([]string)
 	nDataItems := dataItems[0:remove_len]
 
 	delete(SessionStore.Data, lkey)
 
-	SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
-	mu.Unlock()
+	Set(lkey, Item{Type: "list", Data: dataItems[remove_len:]})
 	if remove_len == 1 {
 		return utils.ToBulkString(nDataItems[0]), nil
 	} else {
@@ -1116,15 +1113,16 @@ func (r *RedisServer) blpop(args []string) (string, error) {
 	if timeout == 0 {
 		timeout = 999999
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+
+	duration := time.Duration(timeout * float64(time.Second))
+	fmt.Printf("timeout :: %f, duration :: %v\n", timeout, duration)
+	ctx, cancel := context.WithTimeout(context.Background(), duration)
 
 	defer cancel()
 
-	fmt.Printf("=======%v\n", SessionStore)
-
 	checkVal := func(lkey string) (Item, error) {
 
-		item, ok := SessionStore.Data[lkey]
+		item, ok := Get(lkey)
 		if ok && item.Type != "list" {
 			return Item{}, fmt.Errorf("ERR Item not exists")
 		} else if item.Type != "list" {
@@ -1135,7 +1133,6 @@ func (r *RedisServer) blpop(args []string) (string, error) {
 	}
 
 	var item Item
-	var mu sync.Mutex
 outer:
 	for {
 		select {
@@ -1143,10 +1140,7 @@ outer:
 			fmt.Printf("well it ended")
 			break outer
 		default:
-
-			mu.Lock()
 			item, _ = checkVal(lkey)
-			mu.Unlock()
 			if item != (Item{}) {
 				break outer
 			}
@@ -1161,16 +1155,13 @@ outer:
 
 	dataItems := item.Data.([]string)
 	fmt.Printf("[+] DEBUG: %v [+]\n", dataItems)
-	mu.Lock()
 	nDataItems := dataItems[0:slices.Max([]int{remove_len, len(dataItems)})]
 
 	if len(dataItems) == 1 {
-		delete(SessionStore.Data, lkey)
+		RemoveKey(lkey)
 	} else {
-		SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
+		Set(lkey, Item{Type: "list", Data: dataItems[remove_len:]})
 	}
-	mu.Unlock()
-	fmt.Printf("Here\n")
 
 	return utils.ToArray([]string{lkey, nDataItems[0]}...), nil
 
