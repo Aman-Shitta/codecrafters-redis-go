@@ -1180,10 +1180,11 @@ func (r *RedisServer) subscribe(c net.Conn, args []string) (string, error) {
 	joined := 0
 
 	SessionStore.Lock()
-	if _, ok := SessionStore.Channel[c]; !ok {
+
+	if !slices.Contains(SessionStore.Channel[c], channelKey) {
 		SessionStore.Channel[c] = append(SessionStore.Channel[c], channelKey)
-		joined = len(SessionStore.Channel[c])
 	}
+	joined = len(SessionStore.Channel[c])
 	SessionStore.Unlock()
 
 	return utils.ToArray([]any{"subscribe", channelKey, joined}...), nil
