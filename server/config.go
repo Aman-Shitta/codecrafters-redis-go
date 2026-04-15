@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"sync"
 )
@@ -46,14 +47,17 @@ type Item struct {
 	Data interface{}
 	Type string
 }
+
 type Store struct {
 	sync.Mutex
-	Data map[string]Item
+	Data    map[string]Item
+	Channel map[net.Conn][]string
 }
 
 // hold all data for the current session
 var SessionStore = &Store{
-	Data: make(map[string]Item),
+	Data:    make(map[string]Item),
+	Channel: make(map[net.Conn][]string),
 }
 
 var mu sync.Mutex

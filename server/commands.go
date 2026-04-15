@@ -66,6 +66,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.lpop}, nil
 	case "blpop":
 		return argHandlerWrapper{r.blpop}, nil
+	case "subscribe":
+		return multiHandlerWrapper{r.subscribe}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -1164,5 +1166,26 @@ outer:
 	}
 
 	return utils.ToArray([]string{lkey, nDataItems[0]}...), nil
+
+}
+
+func (r *RedisServer) subscribe(c net.Conn, args []string) (string, error) {
+
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR items not proper in args\n")
+	}
+
+	fmt.Printf("subscribe args: %s \n", args)
+	channelKey := args[0]
+	joined := 0
+
+	SessionStore.Lock()
+	if _, ok := SessionStore.Channel[c]; !ok {
+		SessionStore.Channel[c] = append(SessionStore.Channel[c], channelKey)
+		joined = len(SessionStore.Channel[c])
+	}
+	SessionStore.Unlock()
+
+	return utils.ToArrayBulkString([]string{"subscribe", channelKey, strconv.Itoa(joined)}...), nil
 
 }
