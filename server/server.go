@@ -157,7 +157,8 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 				}
 
 				var resp string
-				if command == "multi" || command == "psync" {
+				// make chnages here to rack connection in command
+				if command == "multi" || command == "psync" || command == "subscribe" {
 					resp, err = handler.Execute(c, args)
 				} else {
 					resp, err = handler.Execute(args)

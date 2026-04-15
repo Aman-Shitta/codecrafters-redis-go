@@ -139,7 +139,7 @@ func ToInteger(i int) string {
 	return fmt.Sprintf("%c%d\r\n", Integer, i)
 }
 
-func ToArray(data ...string) string {
+func ToArray(data ...any) string {
 
 	var resp strings.Builder
 
@@ -150,8 +150,17 @@ func ToArray(data ...string) string {
 	}
 	resp.WriteString(fmt.Sprintf("*%d\r\n", numOfIems))
 	for _, element := range data {
-		loe := len(element)
-		resp.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", loe, element))
+
+		switch element := element.(type) {
+		case string:
+			loe := len(element)
+			resp.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", loe, element))
+		case int:
+			resp.WriteString(fmt.Sprintf(":%d\r\n", element))
+		default:
+			panic("unsuported type in ToArray ")
+		}
+
 	}
 
 	return resp.String()

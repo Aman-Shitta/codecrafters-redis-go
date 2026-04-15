@@ -1165,7 +1165,7 @@ outer:
 		Set(lkey, Item{Type: "list", Data: dataItems[remove_len:]})
 	}
 
-	return utils.ToArray([]string{lkey, nDataItems[0]}...), nil
+	return utils.ToArray([]any{lkey, nDataItems[0]}...), nil
 
 }
 
@@ -1186,6 +1186,6 @@ func (r *RedisServer) subscribe(c net.Conn, args []string) (string, error) {
 	}
 	SessionStore.Unlock()
 
-	return utils.ToArrayBulkString([]string{"subscribe", channelKey, strconv.Itoa(joined)}...), nil
+	return utils.ToArray([]any{"subscribe", channelKey, joined}...), nil
 
 }
