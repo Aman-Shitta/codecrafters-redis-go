@@ -1115,7 +1115,7 @@ func (r *RedisServer) blpop(args []string) (string, error) {
 	}
 
 	duration := time.Duration(timeout * float64(time.Second))
-	fmt.Printf("timeout :: %f, duration :: %v\n", timeout, duration)
+
 	ctx, cancel := context.WithTimeout(context.Background(), duration)
 
 	defer cancel()
