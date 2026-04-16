@@ -60,8 +60,6 @@ var SessionStore = &Store{
 	Channel: make(map[net.Conn][]string),
 }
 
-var mu sync.Mutex
-
 func Get(key string) (Item, bool) {
 	SessionStore.Lock()
 	item, ok := SessionStore.Data[key]

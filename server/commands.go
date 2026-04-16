@@ -1155,7 +1155,9 @@ outer:
 		// return "$-1\r\n", nil
 	}
 
+	SessionStore.Lock()
 	dataItems := item.Data.([]string)
+	SessionStore.Unlock()
 	fmt.Printf("[+] DEBUG: %v [+]\n", dataItems)
 	nDataItems := dataItems[0:slices.Max([]int{remove_len, len(dataItems)})]
 
