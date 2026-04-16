@@ -64,8 +64,8 @@ var mu sync.Mutex
 
 func Get(key string) (Item, bool) {
 	SessionStore.Lock()
-	defer SessionStore.Unlock()
 	item, ok := SessionStore.Data[key]
+	SessionStore.Unlock()
 	return item, ok
 }
 
