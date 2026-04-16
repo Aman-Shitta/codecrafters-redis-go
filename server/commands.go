@@ -1164,7 +1164,6 @@ outer:
 	} else {
 		Set(lkey, Item{Type: "list", Data: dataItems[remove_len:]})
 	}
-
 	return utils.ToArray([]any{lkey, nDataItems[0]}...), nil
 
 }

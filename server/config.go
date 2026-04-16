@@ -63,22 +63,22 @@ var SessionStore = &Store{
 var mu sync.Mutex
 
 func Get(key string) (Item, bool) {
-	mu.Lock()
-	defer mu.Unlock()
+	SessionStore.Lock()
+	defer SessionStore.Unlock()
 	item, ok := SessionStore.Data[key]
 	return item, ok
 }
 
 func Set(key string, val Item) {
-	mu.Lock()
+	SessionStore.Lock()
 	SessionStore.Data[key] = val
-	mu.Unlock()
+	SessionStore.Unlock()
 }
 
 func RemoveKey(key string) {
-	mu.Lock()
+	SessionStore.Lock()
 	delete(SessionStore.Data, key)
-	mu.Unlock()
+	SessionStore.Unlock()
 }
 
 // Loads the data from givenn RDB file
