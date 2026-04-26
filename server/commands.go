@@ -20,7 +20,7 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 	fmt.Println(r.Role, " => strings.ToLower(c) :: ", strings.ToLower(c))
 	switch strings.ToLower(c) {
 	case "ping":
-		return argHandlerWrapper{r.ping}, nil
+		return multiHandlerWrapper{r.ping}, nil
 	case "echo":
 		return argHandlerWrapper{r.echo}, nil
 	case "set":
@@ -786,7 +786,11 @@ func (r *RedisServer) config(args []string) (string, error) {
 
 }
 
-func (r *RedisServer) ping(args []string) (string, error) {
+func (r *RedisServer) ping(conn net.Conn, args []string) (string, error) {
+	fmt.Printf("ping args :: %v\n", args)
+	if r.IsInSubscriptionMode(conn) {
+		return utils.ToArray([]any{"pong", ""}...), nil
+	}
 	return "+PONG\r\n", nil
 }
 

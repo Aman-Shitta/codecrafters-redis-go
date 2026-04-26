@@ -13,7 +13,7 @@ type ArgHandler func(args []string) (string, error)
 type MultiHandler func(conn net.Conn, args []string) (string, error)
 
 type argHandlerWrapper struct {
-	handler ArgHandler
+	command ArgHandler
 }
 
 func (a argHandlerWrapper) Execute(args ...any) (string, error) {
@@ -21,11 +21,11 @@ func (a argHandlerWrapper) Execute(args ...any) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("invalid argument type")
 	}
-	return a.handler(strArgs)
+	return a.command(strArgs)
 }
 
 type multiHandlerWrapper struct {
-	handler MultiHandler
+	command MultiHandler
 }
 
 func (m multiHandlerWrapper) Execute(args ...any) (string, error) {
@@ -34,5 +34,5 @@ func (m multiHandlerWrapper) Execute(args ...any) (string, error) {
 	if !ok1 || !ok2 {
 		return "", fmt.Errorf("invalid argument types for MULTI")
 	}
-	return m.handler(conn, strArgs)
+	return m.command(conn, strArgs)
 }

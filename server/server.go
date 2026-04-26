@@ -173,11 +173,18 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 				}
 
 				// make chnages here to rack connection in command
-				if command == "multi" || command == "psync" || command == "subscribe" {
+				switch command {
+				case "multi", "psync", "subscribe", "ping":
 					resp, err = handler.Execute(c, args)
-				} else {
+				default:
 					resp, err = handler.Execute(args)
 				}
+
+				// if command == "multi" || command == "psync" || command == "subscribe" || (utils.IsSubscriptionAllowedCommand(command) && s.IsInSubscriptionMode(c)) {
+				// 	resp, err = handler.Execute(c, args)
+				// } else {
+				// 	resp, err = handler.Execute(args)
+				// }
 
 				if err != nil {
 					c.Write([]byte(utils.ToSimpleString(err.Error(), "ERR")))
@@ -193,10 +200,10 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 				}
 
 				var resp string
-				// make chnages here to rack connection in command
-				if command == "multi" || command == "psync" || command == "subscribe" {
+				switch command {
+				case "multi", "psync", "subscribe", "ping":
 					resp, err = handler.Execute(c, args)
-				} else {
+				default:
 					resp, err = handler.Execute(args)
 				}
 
