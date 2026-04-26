@@ -925,7 +925,7 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 	}
 	listKey := args[0]
 	listVals := args[1:]
-
+	SessionStore.Lock()
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
 			updatedList := SessionStore.Data[listKey].Data.([]string)
@@ -939,6 +939,7 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 	} else {
 		SessionStore.Data[listKey] = Item{Type: "list", Data: listVals}
 	}
+	SessionStore.Unlock()
 
 	totalItems := len(SessionStore.Data[listKey].Data.([]string))
 	return utils.ToInteger(totalItems), nil
@@ -953,7 +954,7 @@ func (r *RedisServer) lpush(args []string) (string, error) {
 	}
 	listKey := args[0]
 	listVals := args[1:]
-
+	SessionStore.Lock()
 	if _, ok := SessionStore.Data[listKey]; ok {
 		if SessionStore.Data[listKey].Type == "list" {
 			updatedList := SessionStore.Data[listKey].Data.([]string)
@@ -970,6 +971,7 @@ func (r *RedisServer) lpush(args []string) (string, error) {
 		slices.Reverse(listVals)
 		SessionStore.Data[listKey] = Item{Type: "list", Data: listVals}
 	}
+	SessionStore.Unlock()
 
 	totalItems := len(SessionStore.Data[listKey].Data.([]string))
 	return utils.ToInteger(totalItems), nil
