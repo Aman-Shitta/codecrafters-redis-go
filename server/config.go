@@ -51,13 +51,13 @@ type Item struct {
 type Store struct {
 	sync.Mutex
 	Data    map[string]Item
-	Channel map[net.Conn][]string
+	Channel map[string][]net.Conn
 }
 
 // hold all data for the current session
 var SessionStore = &Store{
 	Data:    make(map[string]Item),
-	Channel: make(map[net.Conn][]string),
+	Channel: make(map[string][]net.Conn),
 }
 
 func Get(key string) (Item, bool) {

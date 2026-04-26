@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -62,8 +63,13 @@ func (s *RedisServer) IsInSubscriptionMode(c net.Conn) bool {
 	SessionStore.Lock()
 	defer SessionStore.Unlock()
 
-	channels, exists := SessionStore.Channel[c]
-	return exists && len(channels) > 0
+	for _, channConns := range SessionStore.Channel {
+		if slices.Contains(channConns, c) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *RedisServer) HandleConnection(c net.Conn) {

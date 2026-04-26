@@ -68,6 +68,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.blpop}, nil
 	case "subscribe":
 		return multiHandlerWrapper{r.subscribe}, nil
+	case "publish":
+		return argHandlerWrapper{r.publish}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -1188,12 +1190,43 @@ func (r *RedisServer) subscribe(c net.Conn, args []string) (string, error) {
 
 	SessionStore.Lock()
 
-	if !slices.Contains(SessionStore.Channel[c], channelKey) {
-		SessionStore.Channel[c] = append(SessionStore.Channel[c], channelKey)
+	if !slices.Contains(SessionStore.Channel[channelKey], c) {
+		SessionStore.Channel[channelKey] = append(SessionStore.Channel[channelKey], c)
 	}
-	joined = len(SessionStore.Channel[c])
+
+	for _, conns := range SessionStore.Channel {
+		if slices.Contains(conns, c) {
+			joined++
+		}
+	}
+	// joined = len(SessionStore.Channel[channelKey])
 	SessionStore.Unlock()
 
 	return utils.ToArray([]any{"subscribe", channelKey, joined}...), nil
+
+}
+
+func (s *RedisServer) publish(args []string) (string, error) {
+
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR items not proper in args\n")
+	}
+
+	fmt.Printf("publish args: %s \n", args)
+
+	channelName := args[0]
+	messageContent := args[1]
+
+	fmt.Println("messageContent :: ", messageContent)
+
+	channelConns, ok := SessionStore.Channel[channelName]
+
+	connsLen := 0
+	if ok {
+		connsLen = len(channelConns)
+	}
+	resp := utils.ToInteger(connsLen)
+
+	return resp, nil
 
 }
