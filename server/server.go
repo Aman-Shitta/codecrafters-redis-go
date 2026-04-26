@@ -58,6 +58,14 @@ type QueuedCommand struct {
 	Args []string
 }
 
+func (s *RedisServer) IsInSubscriptionMode(c net.Conn) bool {
+	SessionStore.Lock()
+	defer SessionStore.Unlock()
+
+	channels, exists := SessionStore.Channel[c]
+	return exists && len(channels) > 0
+}
+
 func (s *RedisServer) HandleConnection(c net.Conn) {
 	utils.LogEntry("PINK", s.Role, "[+] Connection started [+]")
 	defer func() {
@@ -66,7 +74,6 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 	}()
 
 	transactions := make(map[net.Conn][]QueuedCommand)
-
 	for {
 		var data = make([]byte, 1024)
 		n, err := c.Read(data)
@@ -120,7 +127,7 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 				}
 
 				var resp string
-				if qc.Name == "multi" || qc.Name == "psync" {
+				if qc.Name == "multi" || qc.Name == "psync" || command == "subscribe" {
 					resp, err = handler.Execute(c, qc.Args)
 				} else {
 					resp, err = handler.Execute(qc.Args)
@@ -148,6 +155,35 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 					Args: args,
 				})
 				c.Write([]byte(utils.ToSimpleString("QUEUED", "OK")))
+			} else if s.IsInSubscriptionMode(c) {
+
+				var resp string
+
+				if !utils.IsSubscriptionAllowedCommand(command) {
+					resp = utils.ToSimpleString("ERR Can't execute '"+command+"': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context", "ERR")
+					c.Write([]byte(resp))
+					continue
+				}
+
+				handler, err := s.ProcessCommand(command)
+
+				if err != nil {
+					c.Write([]byte(fmt.Sprintf("-ERR %s\r\n", err.Error())))
+					continue
+				}
+
+				// make chnages here to rack connection in command
+				if command == "multi" || command == "psync" || command == "subscribe" {
+					resp, err = handler.Execute(c, args)
+				} else {
+					resp, err = handler.Execute(args)
+				}
+
+				if err != nil {
+					c.Write([]byte(utils.ToSimpleString(err.Error(), "ERR")))
+				} else if resp != "" {
+					c.Write([]byte(resp))
+				}
 			} else {
 				// Normal command
 				handler, err := s.ProcessCommand(command)

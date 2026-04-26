@@ -173,3 +173,16 @@ func CheckValueType(d string) (string, error) {
 		return "string", nil
 	}
 }
+
+func IsSubscriptionAllowedCommand(cmd string) bool {
+	allowedCmds := map[string]bool{
+		"subscribe":    true,
+		"unsubscribe":  true,
+		"psubscribe":   true,
+		"punsubscribe": true,
+		"ping":         true,
+		"quit":         true,
+		"reset":        true,
+	}
+	return allowedCmds[cmd]
+}

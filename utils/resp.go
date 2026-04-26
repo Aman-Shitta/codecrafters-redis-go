@@ -109,7 +109,6 @@ func ToSimpleString(msg string, t string) string {
 	if respType, ok := Types[strings.ToUpper(t)]; ok {
 		return fmt.Sprintf("%s%s\r\n", respType, msg)
 	}
-
 	return ""
 }
 
