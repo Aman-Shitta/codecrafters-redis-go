@@ -941,9 +941,9 @@ func (r *RedisServer) rpush(args []string) (string, error) {
 	} else {
 		SessionStore.Data[listKey] = Item{Type: "list", Data: listVals}
 	}
+	totalItems := len(SessionStore.Data[listKey].Data.([]string))
 	SessionStore.Unlock()
 
-	totalItems := len(SessionStore.Data[listKey].Data.([]string))
 	return utils.ToInteger(totalItems), nil
 }
 
@@ -1073,7 +1073,8 @@ func (r *RedisServer) lpop(args []string) (string, error) {
 		}
 	}
 
-	item, ok := Get(lkey)
+	SessionStore.Lock()
+	item, ok := SessionStore.Data[lkey]
 
 	if ok && item.Type != "list" {
 		return "", fmt.Errorf("ERR Item not exists")
@@ -1086,7 +1087,10 @@ func (r *RedisServer) lpop(args []string) (string, error) {
 
 	delete(SessionStore.Data, lkey)
 
-	Set(lkey, Item{Type: "list", Data: dataItems[remove_len:]})
+	SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
+
+	SessionStore.Unlock()
+
 	if remove_len == 1 {
 		return utils.ToBulkString(nDataItems[0]), nil
 	} else {
@@ -1131,8 +1135,9 @@ func (r *RedisServer) blpop(args []string) (string, error) {
 	defer cancel()
 
 	checkVal := func(lkey string) (Item, error) {
-
-		item, ok := Get(lkey)
+		SessionStore.Lock()
+		item, ok := SessionStore.Data[lkey]
+		SessionStore.Unlock()
 		if ok && item.Type != "list" {
 			return Item{}, fmt.Errorf("ERR Item not exists")
 		} else if item.Type != "list" {
@@ -1165,15 +1170,16 @@ outer:
 
 	SessionStore.Lock()
 	dataItems := item.Data.([]string)
-	SessionStore.Unlock()
+
 	fmt.Printf("[+] DEBUG: %v [+]\n", dataItems)
 	nDataItems := dataItems[0:slices.Max([]int{remove_len, len(dataItems)})]
 
 	if len(dataItems) == 1 {
-		RemoveKey(lkey)
+		delete(SessionStore.Data, lkey)
 	} else {
-		Set(lkey, Item{Type: "list", Data: dataItems[remove_len:]})
+		SessionStore.Data[lkey] = Item{Type: "list", Data: dataItems[remove_len:]}
 	}
+	SessionStore.Unlock()
 	return utils.ToArray([]any{lkey, nDataItems[0]}...), nil
 
 }
@@ -1224,6 +1230,12 @@ func (s *RedisServer) publish(args []string) (string, error) {
 	connsLen := 0
 	if ok {
 		connsLen = len(channelConns)
+
+		for _, conn := range channelConns {
+
+			fmt.Fprint(conn, utils.ToArrayBulkString([]string{"message", channelName, messageContent}...))
+		}
+
 	}
 	resp := utils.ToInteger(connsLen)
 

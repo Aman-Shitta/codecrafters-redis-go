@@ -60,25 +60,6 @@ var SessionStore = &Store{
 	Channel: make(map[string][]net.Conn),
 }
 
-func Get(key string) (Item, bool) {
-	SessionStore.Lock()
-	item, ok := SessionStore.Data[key]
-	SessionStore.Unlock()
-	return item, ok
-}
-
-func Set(key string, val Item) {
-	SessionStore.Lock()
-	SessionStore.Data[key] = val
-	SessionStore.Unlock()
-}
-
-func RemoveKey(key string) {
-	SessionStore.Lock()
-	delete(SessionStore.Data, key)
-	SessionStore.Unlock()
-}
-
 // Loads the data from givenn RDB file
 // adding persistence
 func (c *Config) AutoLoad() error {
