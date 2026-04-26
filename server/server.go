@@ -180,7 +180,7 @@ func (s *RedisServer) HandleConnection(c net.Conn) {
 
 				// make chnages here to rack connection in command
 				switch command {
-				case "multi", "psync", "subscribe", "ping":
+				case "multi", "psync", "subscribe", "ping", "unsubscribe":
 					resp, err = handler.Execute(c, args)
 				default:
 					resp, err = handler.Execute(args)

@@ -70,6 +70,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return multiHandlerWrapper{r.subscribe}, nil
 	case "publish":
 		return argHandlerWrapper{r.publish}, nil
+	case "unsubscribe":
+		return multiHandlerWrapper{r.unsubscribe}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -1241,4 +1243,32 @@ func (s *RedisServer) publish(args []string) (string, error) {
 
 	return resp, nil
 
+}
+
+func (r *RedisServer) unsubscribe(c net.Conn, args []string) (string, error) {
+
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR items not proper in args\n")
+	}
+
+	channelName := args[0]
+
+	SessionStore.Lock()
+
+	conns := SessionStore.Channel[channelName]
+	i := slices.Index(conns, c)
+	SessionStore.Channel[channelName] = slices.Delete(SessionStore.Channel[channelName], i, i+1)
+
+	connsLen := 0
+	for _, channelConns := range SessionStore.Channel {
+		if slices.Contains(channelConns, c) {
+			connsLen++
+		}
+
+	}
+	SessionStore.Unlock()
+
+	resp := utils.ToArray([]any{"unsubscribe", channelName, connsLen}...)
+
+	return resp, nil
 }
