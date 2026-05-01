@@ -72,6 +72,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return argHandlerWrapper{r.publish}, nil
 	case "unsubscribe":
 		return multiHandlerWrapper{r.unsubscribe}, nil
+	case "zadd":
+		return argHandlerWrapper{r.zadd}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -1270,5 +1272,26 @@ func (r *RedisServer) unsubscribe(c net.Conn, args []string) (string, error) {
 
 	resp := utils.ToArray([]any{"unsubscribe", channelName, connsLen}...)
 
+	return resp, nil
+}
+
+func (r *RedisServer) zadd(args []string) (string, error) {
+	var resp string
+
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR items not proper in args\n")
+	}
+	// setKey := args[0]
+	// valScore := args[1]
+	// value := args[3]
+
+	// SessionStore.Lock()
+	// SessionStore.Data[setKey] =  Item{
+	// 	Data: ,
+	// 	Type: "sorted_set",
+	// }
+	// SessionStore.Unlock()
+
+	resp = utils.ToInteger(1)
 	return resp, nil
 }
