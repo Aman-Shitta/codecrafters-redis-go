@@ -1281,17 +1281,32 @@ func (r *RedisServer) zadd(args []string) (string, error) {
 	if len(args) == 0 {
 		return "", fmt.Errorf("ERR items not proper in args\n")
 	}
-	// setKey := args[0]
-	// valScore := args[1]
-	// value := args[3]
+	setKey := args[0]
+	valScore := args[1]
+	value := args[2]
 
-	// SessionStore.Lock()
-	// SessionStore.Data[setKey] =  Item{
-	// 	Data: ,
-	// 	Type: "sorted_set",
-	// }
-	// SessionStore.Unlock()
+	valScoreFloat, _ := strconv.ParseFloat(valScore, 64)
+	added := 0
 
-	resp = utils.ToInteger(1)
+	SessionStore.Lock()
+
+	if sorted_set_member, ok := SessionStore.Data[setKey]; !ok {
+		SessionStore.Data[setKey] = Item{
+			Data: map[string]float64{
+				value: valScoreFloat,
+			},
+			Type: "sorted_set",
+		}
+		added++
+	} else {
+		if _, ok := sorted_set_member.Data.(map[string]float64)[value]; !ok {
+			added++
+		}
+		sorted_set_member.Data.(map[string]float64)[value] = valScoreFloat
+		SessionStore.Data[setKey] = sorted_set_member
+	}
+	SessionStore.Unlock()
+
+	resp = utils.ToInteger(added)
 	return resp, nil
 }
