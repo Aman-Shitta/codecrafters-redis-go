@@ -155,13 +155,6 @@ func ReadRESPMessage(r *bufio.Reader, readingRDB bool) ([]byte, error) {
 	}
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func CheckValueType(d string) (string, error) {
 
 	var err error

@@ -76,3 +76,29 @@ func (c *Config) AutoLoad() error {
 
 	return nil
 }
+
+type SortedSet struct {
+	Scores  map[string]float64
+	members []Member
+}
+
+func NewSortedSet() *SortedSet {
+	return &SortedSet{
+		Scores:  make(map[string]float64),
+		members: []Member{},
+	}
+}
+
+func (ss *SortedSet) SSAdd(k string, v float64) {
+	ss.Scores[k] = v
+	member := Member{
+		Value: k,
+		Score: v,
+	}
+	ss.members = append(ss.members, member)
+}
+
+type Member struct {
+	Value string
+	Score float64
+}
