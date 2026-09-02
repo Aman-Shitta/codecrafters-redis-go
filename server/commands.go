@@ -73,13 +73,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return multiHandlerWrapper{r.unsubscribe}, nil
 	case "zadd":
 		return argHandlerWrapper{r.zadd}, nil
-<<<<<<< HEAD
 	case "zrank":
 		return argHandlerWrapper{r.zrank}, nil
-=======
-	// case "zrank":
-	// 	return argHandlerWrapper{r.zrank}, nil
->>>>>>> 1c409803f9856147c4668d2aed1ff6392ecdc3c6
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
