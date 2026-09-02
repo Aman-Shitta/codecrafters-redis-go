@@ -98,6 +98,7 @@ func (ss *SortedSet) SSAdd(k string, v float64) {
 	ss.members = append(ss.members, member)
 }
 
+<<<<<<< HEAD
 func (ss *SortedSet) GetIndex(k string) (int, error) {
 	var val float64
 	var ok bool
@@ -119,6 +120,8 @@ func (ss *SortedSet) GetIndex(k string) (int, error) {
 	return 0, fmt.Errorf("Not presenet")
 }
 
+=======
+>>>>>>> 1c409803f9856147c4668d2aed1ff6392ecdc3c6
 type Member struct {
 	Value string
 	Score float64
