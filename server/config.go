@@ -99,20 +99,26 @@ func (ss *SortedSet) SSAdd(k string, v float64) {
 }
 
 func (ss *SortedSet) GetIndex(k string) (int, error) {
-	var val float64
-	var ok bool
 
-	fmt.Println(k)
-	fmt.Println(ss.members)
-	if val, ok = ss.Scores[k]; !ok {
+	if _, ok := ss.Scores[k]; !ok {
 		return 0, fmt.Errorf("Not presenet")
 	}
 
-	member := Member{Value: k, Score: val}
+	// Sort members by score to get the rank
+	sortedMembers := make([]Member, len(ss.members))
+	copy(sortedMembers, ss.members)
 
-	for idx, existingMember := range ss.members {
-		fmt.Println(idx, existingMember)
-		if member == existingMember {
+	// Simple insertion sort by score (ascending)
+	for i := 1; i < len(sortedMembers); i++ {
+		for j := i; j > 0 && sortedMembers[j].Score < sortedMembers[j-1].Score; j-- {
+			sortedMembers[j], sortedMembers[j-1] = sortedMembers[j-1], sortedMembers[j]
+		}
+	}
+
+	// Find the rank in sorted order
+	for idx, member := range sortedMembers {
+		fmt.Println(idx, member)
+		if member.Value == k {
 			return idx, nil
 		}
 	}
