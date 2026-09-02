@@ -76,3 +76,50 @@ func (c *Config) AutoLoad() error {
 
 	return nil
 }
+
+type SortedSet struct {
+	Scores  map[string]float64
+	members []Member
+}
+
+func NewSortedSet() *SortedSet {
+	return &SortedSet{
+		Scores:  make(map[string]float64),
+		members: []Member{},
+	}
+}
+
+func (ss *SortedSet) SSAdd(k string, v float64) {
+	ss.Scores[k] = v
+	member := Member{
+		Value: k,
+		Score: v,
+	}
+	ss.members = append(ss.members, member)
+}
+
+func (ss *SortedSet) GetIndex(k string) (int, error) {
+	var val float64
+	var ok bool
+
+	fmt.Println(k)
+	fmt.Println(ss.members)
+	if val, ok = ss.Scores[k]; !ok {
+		return 0, fmt.Errorf("Not presenet")
+	}
+
+	member := Member{Value: k, Score: val}
+
+	for idx, existingMember := range ss.members {
+		fmt.Println(idx, existingMember)
+		if member == existingMember {
+			return idx, nil
+		}
+	}
+	return 0, fmt.Errorf("Not presenet")
+}
+
+type Member struct {
+	Value string
+	Score float64
+}

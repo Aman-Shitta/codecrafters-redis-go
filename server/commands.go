@@ -16,7 +16,6 @@ import (
 
 // func (r *RedisServer) ProcessCommand(c string) (func(...interface{}) (string, error), error) {
 func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
-
 	fmt.Println(r.Role, " => strings.ToLower(c) :: ", strings.ToLower(c))
 	switch strings.ToLower(c) {
 	case "ping":
@@ -74,6 +73,8 @@ func (r *RedisServer) ProcessCommand(c string) (CommandHandler, error) {
 		return multiHandlerWrapper{r.unsubscribe}, nil
 	case "zadd":
 		return argHandlerWrapper{r.zadd}, nil
+	case "zrank":
+		return argHandlerWrapper{r.zrank}, nil
 	default:
 		utils.LogEntry("crossed", "Default case triggered :: ", c)
 		return nil, fmt.Errorf("not yet implemented")
@@ -1289,24 +1290,66 @@ func (r *RedisServer) zadd(args []string) (string, error) {
 	added := 0
 
 	SessionStore.Lock()
+	defer SessionStore.Unlock()
 
-	if sorted_set_member, ok := SessionStore.Data[setKey]; !ok {
+	ss := NewSortedSet()
+
+	// checks if set already exists, create new set
+	if sset, ok := SessionStore.Data[setKey]; !ok || sset.Type != "sortedSet" {
+
+		ss.SSAdd(value, valScoreFloat)
+
 		SessionStore.Data[setKey] = Item{
-			Data: map[string]float64{
-				value: valScoreFloat,
-			},
-			Type: "sorted_set",
+			Data: ss,
+			Type: "sortedSet",
 		}
 		added++
+
 	} else {
-		if _, ok := sorted_set_member.Data.(map[string]float64)[value]; !ok {
-			added++
+		// if sorted set exists check if member is new
+		sortedSet := sset.Data.(*SortedSet)
+		if _, exists := sortedSet.Scores[value]; !exists {
+			added = 1
 		}
-		sorted_set_member.Data.(map[string]float64)[value] = valScoreFloat
-		SessionStore.Data[setKey] = sorted_set_member
+		sortedSet.Scores[value] = valScoreFloat
+
+		// update member in slice or add if new
+		found := false
+		for i, member := range sortedSet.members {
+			if member.Value == value {
+				sortedSet.members[i].Score = valScoreFloat
+				found = true
+				break
+			}
+		}
+		if !found {
+			sortedSet.members = append(sortedSet.members, Member{Value: value, Score: valScoreFloat})
+		}
 	}
-	SessionStore.Unlock()
 
 	resp = utils.ToInteger(added)
 	return resp, nil
+}
+
+func (r *RedisServer) zrank(args []string) (string, error) {
+	if len(args) == 0 {
+		return "", fmt.Errorf("ERR items not proper in args\n")
+	}
+	setKey := args[0]
+	member_key := args[1]
+
+	SessionStore.Lock()
+	item, exists := SessionStore.Data[setKey]
+	SessionStore.Unlock()
+
+	if !exists || item.Type != "sortedSet" {
+		return "$-1\r\n", nil
+	}
+
+	index, err := item.Data.(*SortedSet).GetIndex(member_key)
+	if err != nil {
+		return "$-1\r\n", nil
+	}
+
+	return utils.ToInteger(index), nil
 }
